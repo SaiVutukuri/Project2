@@ -1,16 +1,39 @@
 /**
  * BlogInDetailCtrl
  */
-app.controller('BlogInDetailCtrl',function($scope,BlogService,$routeParams,$location,$sce){
+app.controller('BlogInDetailCtrl',function($scope,BlogService,$routeParams,$rootScope,NotificationService,$location,$sce){
 	var blogId=$routeParams.blogId
 	var blogPostId=$routeParams.blogPostId
 	var user_email=$routeParams.user_email
+	var blogCommentId=$routeParams.blogCommentId
 	$scope.isRejected=false
+	
+	function getAllNotificationsNotViewed(){
+		NotificationService.getAllNotificationsNotViewed().then(function(response){
+			$rootScope.notifications=response.data
+			$rootScope.notificationCount=$rootScope.notifications.length
+		},function(response){
+			if(response.status==401)
+				$location.path('/login')
+		})
+	}
+	
 	if($routeParams.blogId!=undefined){
 		BlogService.getBlog(blogId).then(function(response){
 			//query? select * from blogpost where blogpostid=?
 			$scope.blogPost=response.data  //blogapprovalform.html or blogdetails.html
 			$scope.htmlContent=$sce.trustAsHtml($scope.blogPost.blogContent)
+		},function(response){
+			if(response.status==401)
+				$location.path('/login')
+		})
+		BlogService.hasUserLikedBlogPost(blogId).then(
+		function(response){
+			//response.data is either 1 blogpostlikes object or empty value
+			if(response.data=='')//the blogpost is not yet liked by the user
+				$scope.isLiked=false
+				else
+					$scope.isLiked=true
 		},function(response){
 			if(response.status==401)
 				$location.path('/login')
@@ -26,22 +49,21 @@ app.controller('BlogInDetailCtrl',function($scope,BlogService,$routeParams,$loca
 				$location.path('/login')
 		}
 	}
-	$scope.rejectBlogPost=function(blogPostId)
-	{
-		BlogService.rejectBlogPost(blogPostId).then(function (response){
-			$location.path('/blogswaitingforapproval/0')
-		}),function(response){
-			$scope.error=response.data
-			if(response.status == 401)
-				$location.path('/login')
-		}
-	}
 
+	$scope.rejectBlogPost=function(blogPostId,rejectionReason){
+		BlogService.rejectBlogPost(blogPostId,rejectionReason).then(function(response){
+			$location.path('/blogswaitingforapproval/0')
+		},function(response){
+			$scope.error=response.data
+			if(response.status==401)
+				$location.path('/login')
+		})
+	}
+	
 	//http://localhost:8080/middlewarecruddemo/getbook?isbn=undefined
 	if(blogPostId!=undefined){
 	BlogService.getBlog(blogPostId).then(function(response){
 			$scope.blogPost=response.data
-			
 		},function(response){
 			console.log(response)
 		})
@@ -102,4 +124,91 @@ app.controller('BlogInDetailCtrl',function($scope,BlogService,$routeParams,$loca
 	{
 		$scope.isRejected=!$scope.isRejected
 	}
+	
+	   $scope.updateLikes=function(blogPostId){
+		   BlogService.updateLikes(blogPostId).then(
+		    function(response){
+		    	$scope.blogPost=response.data
+		    	$scope.isLiked=!$scope.isLiked
+		    },function(response){
+		    	if(response.status==401)
+					$location.path('/login')
+		   })
+	   }
+	   $scope.addBlogComment=function(commentTxt,blogPost){
+		   var blogComment={}
+		   if(commentTxt == "")
+		   {
+		  alert("Please Enter Some Text")
+		   }
+	   else{
+		   blogComment.commentTxt=commentTxt
+		   blogComment.blogPost=blogPost
+		   console.log(blogComment)
+		   BlogService.addBlogComment(blogComment).then(function(response){
+			   $scope.blogComment=response.data
+			   $scope.commentTxt=""
+		   },function(response){
+			   if(response.status==401)
+					$location.path('/login')
+		   })
+	   }
+	   }
+	 $scope.getBlogComments=function(blogPostId){
+		   BlogService.getBlogComments(blogPostId).then(
+		   function(response){
+			   $scope.comments=response.data //it is List<BlogComment> 
+		   },function(response){
+			   if(response.status==401)
+					$location.path('/login')
+		   })
+	   }
+	   function getBlogComments(blogPostId){
+		   BlogService.getBlogComments(blogPostId).then(
+		   function(response){
+			   $scope.comments=response.data //it is List<BlogComment> 
+		   },function(response){
+			   if(response.status==401)
+					$location.path('/login')
+		   })
+	   }
+	   $scope.updateBlogComment=function(commentId,commentTxt,blogPost){
+		   var blogComment={}
+		   if(commentTxt == "")
+			   {
+			  alert("Please Enter Some Text")
+			   }
+		   else{
+		   blogComment.commentTxt=commentTxt
+		   blogComment.blogPost=blogPost
+		   blogComment.commentId=blogCommentId
+		   console.log(blogComment)
+		   BlogService.updateBlogComment(blogComment).then(function(response){
+			   $scope.blogComment=response.data
+			   $scope.comment1.commentTxt=""
+		   },function(response){
+			   if(response.status==401)
+					$location.path('/login')
+		   })
+		   }
+	   }
+	   $scope.deleteBlogComment=function(commentId,blogPostId){
+		   BlogService.deleteBlogComment(commentId).then(function(response){
+			   $scope.blogComment=undefined
+			   getBlogComments(blogPostId)
+		   },function(response){
+			   if(response.status==401)
+					$location.path('/login')
+		   })
+	   }
+	   if(blogCommentId!=undefined){
+		   BlogService.getBlogCommentById(blogCommentId).then(function(response){
+					$scope.comment1=response.data
+					var comment=response.data
+					$scope.blogPost=comment.blogPost
+				},function(response){
+					console.log(response)
+				})
+			}
+	   getAllNotificationsNotViewed()
 })

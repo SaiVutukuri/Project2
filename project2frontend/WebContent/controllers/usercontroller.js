@@ -1,7 +1,17 @@
 /**
  * UserCtrl
  */
-app.controller('UserCtrl',function($scope,$rootScope,UserService,$location,$cookieStore){
+app.controller('UserCtrl',function($scope,$rootScope,UserService,NotificationService,$location,$cookieStore){
+	
+	function getAllNotificationsNotViewed(){
+		NotificationService.getAllNotificationsNotViewed().then(function(response){
+			$rootScope.notifications=response.data
+			$rootScope.notificationCount=$rootScope.notifications.length
+		},function(response){
+			if(response.status==401)
+				$location.path('/login')
+		})
+	}
 	$scope.registerUser=function(user){
 		//call a function in service
 		UserService.registerUser(user).then(function(response){
@@ -17,6 +27,7 @@ app.controller('UserCtrl',function($scope,$rootScope,UserService,$location,$cook
 		//call a function in service
 		UserService.updateUser(user).then(function(response){
 			alert('USER DETAILS UPDATED  successfully... Please login')
+			$rootScope.user=response.data
 			$location.path('/home')
 		},function(response){
 			//response.data -> ErrorClazz object
@@ -50,4 +61,5 @@ app.controller('UserCtrl',function($scope,$rootScope,UserService,$location,$cook
 				$location.path('/login')
 		})
 	}
+	/*getAllNotificationsNotViewed()*/
 })
